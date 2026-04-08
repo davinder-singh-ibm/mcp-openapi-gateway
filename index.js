@@ -20,14 +20,14 @@ dotenv.config({ path: join(__dirname, ".env") });
 const API_BASE = process.env.API_BASE_URL;
 const SWAGGER_PATH = process.env.SWAGGER_PATH;
 const SWAGGER_URL = `${API_BASE}${SWAGGER_PATH}`;
-const API_KEY = process.env.DEMO_API_KEY;
+const API_KEY = process.env.API_KEY;
 const PORT = Number(process.env.PORT || 8080);
 
 if (!API_BASE || !SWAGGER_PATH || !API_KEY) {
   console.error("Missing required environment variables:");
   console.error(`API_BASE_URL: ${API_BASE || "NOT SET"}`);
   console.error(`SWAGGER_PATH: ${SWAGGER_PATH || "NOT SET"}`);
-  console.error(`DEMO_API_KEY: ${API_KEY || "NOT SET"}`);
+  console.error(`API_KEY: ${API_KEY || "NOT SET"}`);
   console.error("\nPlease check your .env file in the project root.");
   process.exit(1);
 }
