@@ -15,7 +15,7 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, ".env") }); //
+dotenv.config({ path: join(__dirname, ".env") }); 
 
 const API_BASE = process.env.API_BASE_URL;
 const SWAGGER_PATH = process.env.SWAGGER_PATH;
