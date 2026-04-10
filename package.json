@@ -8,6 +8,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:validate": "node scripts/validate-env.js && node dist/index.js",
+    "validate": "node scripts/validate-env.js",
     "dev": "tsc && node dist/index.js",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",

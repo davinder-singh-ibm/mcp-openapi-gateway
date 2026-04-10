@@ -15,8 +15,16 @@ import { MCPHandlers } from './mcp/mcpHandlers.js';
 import { createExpressServer, startServer } from './server/expressServer.js';
 import * as logger from './utils/logger.js';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from .env file (for local development)
+// In production (Azure), environment variables are injected directly
+dotenv.config({ path: '.env' });
+
+// Debug: Log if SWAGGER_URLS is available (remove in production)
+if (!process.env.SWAGGER_URLS) {
+  logger.error('SWAGGER_URLS not found in environment variables', {
+    availableVars: Object.keys(process.env).filter(key => key.startsWith('SWAGGER') || key === 'PORT' || key === 'LOG_LEVEL')
+  });
+}
 
 async function main() {
   try {

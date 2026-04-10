@@ -338,14 +338,37 @@ src/
 ### Scripts
 
 ```bash
-npm run build    # Compile TypeScript
-npm start        # Run compiled server
-npm run dev      # Build and run
-npm run watch    # Watch mode for development
-npm run clean    # Clean build artifacts
+npm run build         # Compile TypeScript
+npm start             # Run compiled server
+npm run start:validate # Validate environment then start
+npm run validate      # Validate environment variables only
+npm run dev           # Build and run
+npm run watch         # Watch mode for development
+npm run clean         # Clean build artifacts
 ```
 
 ## Production Deployment
+
+### Azure Web App
+
+For Azure deployment, see:
+- **[Quick Fix Guide](./AZURE_QUICK_FIX.md)** - 5-minute fix for common Azure issues
+- **[Complete Azure Guide](./AZURE_DEPLOYMENT.md)** - Comprehensive deployment documentation
+
+**Quick Azure Setup:**
+
+1. Set environment variables in Azure Portal → Configuration → Application settings:
+   ```
+   SWAGGER_URLS = https://your-api.com/swagger.json
+   PORT = 8080
+   LOG_LEVEL = info
+   ```
+
+2. Ensure startup command is set to: `node dist/index.js`
+
+3. Restart the Web App after configuration changes
+
+**Common Azure Issue:** If you see "SWAGGER_URLS environment variable is required" error, see [AZURE_QUICK_FIX.md](./AZURE_QUICK_FIX.md) for immediate resolution.
 
 ### Docker Example
 

@@ -5,9 +5,25 @@
 import { GatewayConfig, LogLevel, ServiceNameMode, SwaggerConfig, AuthConfig } from './types.js';
 
 export function loadConfig(): GatewayConfig {
+  // Log available environment variables for debugging (Azure deployment)
+  const envVars = Object.keys(process.env).filter(key =>
+    key.startsWith('SWAGGER') ||
+    key === 'PORT' ||
+    key === 'LOG_LEVEL' ||
+    key === 'AUTH_TYPE'
+  );
+  
+  if (envVars.length > 0) {
+    console.log('Available environment variables:', envVars);
+  } else {
+    console.warn('No expected environment variables found. Available vars:', Object.keys(process.env).slice(0, 10));
+  }
+  
   const swaggerUrlsRaw = process.env.SWAGGER_URLS;
   
   if (!swaggerUrlsRaw) {
+    console.error('SWAGGER_URLS environment variable is missing');
+    console.error('All environment variables:', Object.keys(process.env));
     throw new Error('SWAGGER_URLS environment variable is required');
   }
 
