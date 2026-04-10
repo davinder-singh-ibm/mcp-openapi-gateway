@@ -130,10 +130,31 @@ export function setupRoutes(app: any, handlers: MCPHandlers): void {
         return res.status(400).json(response);
       }
 
+      // Check if this is a notification (no id field)
+      const isNotification = mcpRequest.id === undefined || mcpRequest.id === null;
+
       logger.info('Received MCP request', {
         correlationId,
         method: mcpRequest.method,
+        isNotification,
       });
+
+      // Handle notifications (no response needed)
+      if (isNotification) {
+        if (mcpRequest.method === 'notifications/initialized') {
+          logger.info('Client initialized notification received', { correlationId });
+          res.status(200).end();
+          return;
+        }
+
+        // Log other notifications but don't error
+        logger.info('Notification received (no response sent)', {
+          correlationId,
+          method: mcpRequest.method,
+        });
+        res.status(200).end();
+        return;
+      }
 
       // Handle initialize method
       if (mcpRequest.method === 'initialize') {
