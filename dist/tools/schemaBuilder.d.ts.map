@@ -1,1 +1,0 @@
-{"version":3,"file":"schemaBuilder.d.ts","sourceRoot":"","sources":["../../src/tools/schemaBuilder.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,eAAe,EAAE,MAAM,6BAA6B,CAAC;AAG9D,wBAAgB,oBAAoB,CAAC,SAAS,EAAE,eAAe,GAAG,GAAG,CAkDpE;AAwCD,wBAAgB,oBAAoB,CAAC,SAAS,EAAE,eAAe,GAAG,MAAM,CAcvE"}

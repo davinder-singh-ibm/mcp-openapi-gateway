@@ -1,1 +1,0 @@
-{"version":3,"file":"nameBuilder.d.ts","sourceRoot":"","sources":["../../src/tools/nameBuilder.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,eAAe,EAAE,MAAM,6BAA6B,CAAC;AAE9D,wBAAgB,aAAa,CAC3B,SAAS,EAAE,eAAe,EAC1B,WAAW,EAAE,MAAM,EACnB,MAAM,EAAE,MAAM,GACb,MAAM,CAoBR;AAmCD,wBAAgB,oBAAoB,CAAC,SAAS,EAAE,MAAM,EAAE,GAAG,GAAG,CAAC,MAAM,EAAE,MAAM,CAAC,CAgB7E"}

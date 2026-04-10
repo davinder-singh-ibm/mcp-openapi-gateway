@@ -1,1 +1,0 @@
-{"version":3,"file":"bearerAuth.js","sourceRoot":"","sources":["../../../src/auth/providers/bearerAuth.ts"],"names":[],"mappings":"AAAA;;GAEG;AAEH,MAAM,OAAO,kBAAkB;IACT;IAApB,YAAoB,WAAmB;QAAnB,gBAAW,GAAX,WAAW,CAAQ;IAAG,CAAC;IAE3C,KAAK,CAAC,UAAU;QACd,OAAO;YACL,eAAe,EAAE,UAAU,IAAI,CAAC,WAAW,EAAE;SAC9C,CAAC;IACJ,CAAC;CACF;AAED,gBAAgB"}

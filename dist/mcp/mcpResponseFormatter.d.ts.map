@@ -1,1 +1,0 @@
-{"version":3,"file":"mcpResponseFormatter.d.ts","sourceRoot":"","sources":["../../src/mcp/mcpResponseFormatter.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,YAAY,EAAE,eAAe,EAAE,MAAM,oBAAoB,CAAC;AAInE,wBAAgB,iBAAiB,CAC/B,YAAY,EAAE,YAAY,EAC1B,aAAa,EAAE,MAAM,GACpB,eAAe,CAyCjB;AAED,wBAAgB,mBAAmB,CACjC,KAAK,EAAE,KAAK,EACZ,aAAa,EAAE,MAAM,GACpB,eAAe,CAejB"}
