@@ -52,4 +52,4 @@ jobs:
           app-name: 'rfp-mcp'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_EF5D0D2B16E540C1B513E3E55CC5B0B9 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_1AF50C9925A549F88541E017A253F206 }}
