@@ -1,0 +1,1 @@
+{"version":3,"file":"requestBuilder.d.ts","sourceRoot":"","sources":["../../src/http/requestBuilder.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,cAAc,EAAE,YAAY,EAAE,WAAW,EAAE,MAAM,oBAAoB,CAAC;AAI/E,wBAAsB,gBAAgB,CACpC,UAAU,EAAE,cAAc,EAC1B,QAAQ,EAAE,YAAY,EACtB,aAAa,EAAE,MAAM,GACpB,OAAO,CAAC,WAAW,CAAC,CAsEtB"}
