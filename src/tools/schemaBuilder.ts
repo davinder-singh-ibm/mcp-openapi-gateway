@@ -4,9 +4,59 @@
  */
 
 import { ParsedOperation } from '../openapi/openapiParser.js';
-import { OpenAPIParameter } from '../config/types.js';
+import { OpenAPIParameter, OpenAPISpec } from '../config/types.js';
 
-export function buildToolInputSchema(operation: ParsedOperation): any {
+/**
+ * Dereference a schema by resolving all $ref references
+ */
+function dereferenceSchema(schema: any, spec: OpenAPISpec, visited = new Set<string>()): any {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  // Handle $ref
+  if (schema.$ref && typeof schema.$ref === 'string') {
+    const ref = schema.$ref;
+    
+    // Prevent circular references
+    if (visited.has(ref)) {
+      return { type: 'object', description: 'Circular reference detected' };
+    }
+    visited.add(ref);
+
+    // Parse the reference path (e.g., "#/components/schemas/SubscriberRequestDto")
+    const refPath = ref.replace(/^#\//, '').split('/');
+    
+    // Navigate to the referenced schema
+    let resolved: any = spec;
+    for (const segment of refPath) {
+      if (resolved && typeof resolved === 'object') {
+        resolved = resolved[segment];
+      } else {
+        // Reference not found, return a generic object schema
+        return { type: 'object', description: `Unresolved reference: ${ref}` };
+      }
+    }
+
+    // Recursively dereference the resolved schema
+    return dereferenceSchema(resolved, spec, visited);
+  }
+
+  // Handle arrays
+  if (Array.isArray(schema)) {
+    return schema.map(item => dereferenceSchema(item, spec, visited));
+  }
+
+  // Handle objects - recursively dereference all properties
+  const dereferenced: any = {};
+  for (const [key, value] of Object.entries(schema)) {
+    dereferenced[key] = dereferenceSchema(value, spec, visited);
+  }
+
+  return dereferenced;
+}
+
+export function buildToolInputSchema(operation: ParsedOperation, spec: OpenAPISpec): any {
   const properties: any = {};
   const required: string[] = [];
 
@@ -42,9 +92,9 @@ export function buildToolInputSchema(operation: ParsedOperation): any {
     }
   }
 
-  // Build request body schema
+  // Build request body schema with dereferencing
   if (operation.hasRequestBody && operation.requestBodySchema) {
-    properties.body = operation.requestBodySchema;
+    properties.body = dereferenceSchema(operation.requestBodySchema, spec);
     
     if (operation.operation.requestBody?.required === true) {
       required.push('body');

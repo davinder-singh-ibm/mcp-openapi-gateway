@@ -36,7 +36,7 @@ export function generateToolsFromSpec(
   for (const operation of operations) {
     const toolName = buildToolName(operation, serviceName, toolPrefix);
     const description = buildToolDescription(operation);
-    const inputSchema = buildToolInputSchema(operation);
+    const inputSchema = buildToolInputSchema(operation, spec);
 
     const tool: MCPTool = {
       name: toolName,
