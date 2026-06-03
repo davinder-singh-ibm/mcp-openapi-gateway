@@ -94,12 +94,37 @@ export class MCPHandlers {
     }
 
     try {
+      // Transform input arguments to handle both formats:
+      // 1. Structured format: { body: {...}, path: {...}, query: {...} }
+      // 2. Flat format: { phoneNumber: "...", otherBodyParam: "..." }
+      let transformedArgs = args;
+      
+      // Check if this operation expects a body but args.body is missing
+      const expectsBody = tool.inputSchema?.properties?.body !== undefined;
+      const hasBodyProperty = args?.body !== undefined;
+      const hasStructuredProperties = args?.path !== undefined ||
+                                      args?.query !== undefined ||
+                                      args?.headers !== undefined;
+      
+      // If operation expects body and user sent flat format (no body property but has other fields)
+      if (expectsBody && !hasBodyProperty && !hasStructuredProperties) {
+        // Move all args into body property
+        transformedArgs = {
+          body: args,
+        };
+        
+        logger.debug('Transformed flat body arguments to structured format', {
+          correlationId,
+          toolName,
+        });
+      }
+      
       // Parse invocation arguments
       const invocation: ToolInvocation = {
-        path: args?.path,
-        query: args?.query,
-        headers: args?.headers,
-        body: args?.body,
+        path: transformedArgs?.path,
+        query: transformedArgs?.query,
+        headers: transformedArgs?.headers,
+        body: transformedArgs?.body,
       };
 
       // Build HTTP request

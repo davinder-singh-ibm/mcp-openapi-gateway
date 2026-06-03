@@ -6,7 +6,7 @@
 import { MCPTool, ToolMetadata, OpenAPISpec, SwaggerConfig } from '../config/types.js';
 import { parseOpenAPISpec, resolveBaseUrl, getServiceName } from '../openapi/openapiParser.js';
 import { buildToolName, detectNameCollisions } from './nameBuilder.js';
-import { buildToolInputSchema, buildToolDescription } from './schemaBuilder.js';
+import { buildToolInputSchema, buildToolDescription, buildToolOutputSchema } from './schemaBuilder.js';
 import * as logger from '../utils/logger.js';
 
 export interface GeneratedTool {
@@ -38,10 +38,20 @@ export function generateToolsFromSpec(
     const description = buildToolDescription(operation);
     const inputSchema = buildToolInputSchema(operation, spec);
 
+    const outputSchema = buildToolOutputSchema(operation, spec);
+
     const tool: MCPTool = {
       name: toolName,
       description,
       inputSchema,
+      outputSchema,
+      annotations: {
+        preferredRequestContentType: operation.preferredRequestContentType,
+        preferredResponseStatus: operation.preferredResponse?.statusCode,
+        preferredResponseContentType: operation.preferredResponse?.preferredMediaType,
+        deprecated: operation.deprecated === true,
+        tags: operation.tags,
+      },
     };
 
     const metadata: ToolMetadata = {
@@ -51,6 +61,25 @@ export function generateToolsFromSpec(
       path: operation.path,
       operation: operation.operation,
       auth: config.auth || { type: 'none' },
+      requestContentType: operation.preferredRequestContentType,
+      responseContentType: operation.preferredResponse?.preferredMediaType,
+      requestEncoding:
+        operation.preferredRequestContentType === 'application/json'
+          ? 'json'
+          : operation.preferredRequestContentType === 'application/x-www-form-urlencoded'
+            ? 'form'
+            : operation.preferredRequestContentType === 'multipart/form-data'
+              ? 'multipart'
+              : operation.preferredRequestContentType?.includes('xml')
+                ? 'xml'
+                : operation.preferredRequestContentType?.startsWith('text/')
+                  ? 'text'
+                  : operation.preferredRequestContentType === 'application/octet-stream'
+                    ? 'binary'
+                    : 'unknown',
+      queryParams: operation.queryParams,
+      headerParams: operation.headerParams,
+      cookieParams: operation.cookieParams,
     };
 
     generatedTools.push({ tool, metadata });

@@ -165,6 +165,7 @@ export function setupRoutes(app: any, handlers: MCPHandlers): void {
             protocolVersion: '2024-11-05',
             capabilities: {
               tools: {},
+              resources: {},
             },
             serverInfo: {
               name: 'mcp-openapi-gateway',
@@ -173,6 +174,36 @@ export function setupRoutes(app: any, handlers: MCPHandlers): void {
           },
         };
 
+        res.json(response);
+        return;
+      }
+
+      // Handle resources/list method (return empty list as we don't provide resources)
+      if (mcpRequest.method === 'resources/list') {
+        const response: MCPResponse = {
+          jsonrpc: '2.0',
+          id: mcpRequest.id,
+          result: {
+            resources: [],
+          },
+        };
+
+        logger.info('Handled resources/list request', { correlationId });
+        res.json(response);
+        return;
+      }
+
+      // Handle resources/templates/list method (return empty list as we don't provide resource templates)
+      if (mcpRequest.method === 'resources/templates/list') {
+        const response: MCPResponse = {
+          jsonrpc: '2.0',
+          id: mcpRequest.id,
+          result: {
+            resourceTemplates: [],
+          },
+        };
+
+        logger.info('Handled resources/templates/list request', { correlationId });
         res.json(response);
         return;
       }

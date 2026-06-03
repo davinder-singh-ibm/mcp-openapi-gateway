@@ -358,6 +358,11 @@ Generate `README.md` with:
 - Each file preceded by its relative path heading:
 
 Example:
+
+sample use case:
+
+Retrieve subscriber details by phone number 8800226877
+
 ```
 
 ### src/index.ts

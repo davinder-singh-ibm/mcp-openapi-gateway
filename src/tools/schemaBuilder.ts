@@ -1,115 +1,184 @@
 /**
  * JSON Schema builder for MCP tool input schemas
- * Converts OpenAPI parameters and request bodies to JSON Schema
+ * Converts normalized OpenAPI parameters and request bodies to agent-friendly JSON Schema
  */
 
-import { ParsedOperation } from '../openapi/openapiParser.js';
-import { OpenAPIParameter, OpenAPISpec } from '../config/types.js';
+import { NormalizedParameter, OpenAPISpec, ParsedOperation } from '../config/types.js';
 
-/**
- * Dereference a schema by resolving all $ref references
- */
-function dereferenceSchema(schema: any, spec: OpenAPISpec, visited = new Set<string>()): any {
+function resolveLocalRef(spec: OpenAPISpec, ref: string): any {
+  if (!ref.startsWith('#/')) {
+    return {
+      type: 'object',
+      description: `External reference not resolved inline: ${ref}`,
+    };
+  }
+
+  const segments = ref.replace(/^#\//, '').split('/');
+  let current: any = spec;
+
+  for (const segment of segments) {
+    if (!current || typeof current !== 'object') {
+      return {
+        type: 'object',
+        description: `Unresolved reference: ${ref}`,
+      };
+    }
+    current = current[segment];
+  }
+
+  return current;
+}
+
+function normalizeNullable(schema: any): any {
   if (!schema || typeof schema !== 'object') {
     return schema;
   }
 
-  // Handle $ref
-  if (schema.$ref && typeof schema.$ref === 'string') {
-    const ref = schema.$ref;
-    
-    // Prevent circular references
-    if (visited.has(ref)) {
-      return { type: 'object', description: 'Circular reference detected' };
-    }
-    visited.add(ref);
+  const normalized = { ...schema };
 
-    // Parse the reference path (e.g., "#/components/schemas/SubscriberRequestDto")
-    const refPath = ref.replace(/^#\//, '').split('/');
-    
-    // Navigate to the referenced schema
-    let resolved: any = spec;
-    for (const segment of refPath) {
-      if (resolved && typeof resolved === 'object') {
-        resolved = resolved[segment];
-      } else {
-        // Reference not found, return a generic object schema
-        return { type: 'object', description: `Unresolved reference: ${ref}` };
+  if (normalized.nullable === true && typeof normalized.type === 'string') {
+    normalized.type = [normalized.type, 'null'];
+    delete normalized.nullable;
+  }
+
+  if (Array.isArray(normalized.type) && !normalized.type.includes('null') && normalized.nullable === true) {
+    normalized.type = [...normalized.type, 'null'];
+    delete normalized.nullable;
+  }
+
+  return normalized;
+}
+
+function mergeAllOf(parts: any[]): any {
+  const merged: any = {
+    type: 'object',
+    properties: {},
+    required: [],
+  };
+
+  for (const part of parts) {
+    if (!part || typeof part !== 'object') {
+      continue;
+    }
+
+    if (part.type && part.type !== 'object') {
+      merged.type = part.type;
+    }
+
+    if (part.description && !merged.description) {
+      merged.description = part.description;
+    }
+
+    if (part.properties && typeof part.properties === 'object') {
+      merged.properties = {
+        ...merged.properties,
+        ...part.properties,
+      };
+    }
+
+    if (Array.isArray(part.required)) {
+      merged.required = Array.from(new Set([...(merged.required || []), ...part.required]));
+    }
+
+    for (const [key, value] of Object.entries(part)) {
+      if (['type', 'properties', 'required', 'description'].includes(key)) {
+        continue;
+      }
+      if (merged[key] === undefined) {
+        merged[key] = value;
       }
     }
-
-    // Recursively dereference the resolved schema
-    return dereferenceSchema(resolved, spec, visited);
   }
 
-  // Handle arrays
+  if (!merged.required?.length) {
+    delete merged.required;
+  }
+
+  if (!Object.keys(merged.properties || {}).length) {
+    delete merged.properties;
+  }
+
+  return merged;
+}
+
+function normalizeSchema(
+  schema: any,
+  spec: OpenAPISpec,
+  stack: string[] = []
+): any {
+  if (schema === null || schema === undefined) {
+    return { type: 'string' };
+  }
+
+  if (typeof schema !== 'object') {
+    return schema;
+  }
+
+  if (schema.$ref && typeof schema.$ref === 'string') {
+    const ref = schema.$ref;
+    if (stack.includes(ref)) {
+      return {
+        type: 'object',
+        description: `Recursive reference: ${ref}`,
+      };
+    }
+
+    const resolved = resolveLocalRef(spec, ref);
+    return normalizeSchema(resolved, spec, [...stack, ref]);
+  }
+
   if (Array.isArray(schema)) {
-    return schema.map(item => dereferenceSchema(item, spec, visited));
+    return schema.map(item => normalizeSchema(item, spec, stack));
   }
 
-  // Handle objects - recursively dereference all properties
-  const dereferenced: any = {};
-  for (const [key, value] of Object.entries(schema)) {
-    dereferenced[key] = dereferenceSchema(value, spec, visited);
+  const normalized = normalizeNullable({ ...schema });
+
+  if (normalized.allOf && Array.isArray(normalized.allOf)) {
+    const merged = mergeAllOf(normalized.allOf.map((part: any) => normalizeSchema(part, spec, stack)));
+    const remainder = { ...normalized };
+    delete remainder.allOf;
+    return normalizeSchema({ ...merged, ...remainder }, spec, stack);
   }
 
-  return dereferenced;
+  if (normalized.oneOf && Array.isArray(normalized.oneOf)) {
+    normalized.oneOf = normalized.oneOf.map((part: any) => normalizeSchema(part, spec, stack));
+    normalized.description = normalized.description || 'Provide a value matching one of the allowed schemas';
+  }
+
+  if (normalized.anyOf && Array.isArray(normalized.anyOf)) {
+    normalized.anyOf = normalized.anyOf.map((part: any) => normalizeSchema(part, spec, stack));
+    normalized.description = normalized.description || 'Provide a value matching any compatible schema';
+  }
+
+  if (normalized.properties && typeof normalized.properties === 'object') {
+    normalized.type = normalized.type || 'object';
+    normalized.properties = Object.fromEntries(
+      Object.entries(normalized.properties).map(([key, value]) => [key, normalizeSchema(value, spec, stack)])
+    );
+  }
+
+  if (normalized.items) {
+    normalized.items = normalizeSchema(normalized.items, spec, stack);
+    normalized.type = normalized.type || 'array';
+  }
+
+  if (normalized.additionalProperties && typeof normalized.additionalProperties === 'object') {
+    normalized.additionalProperties = normalizeSchema(normalized.additionalProperties, spec, stack);
+  }
+
+  if (!normalized.type && normalized.properties) {
+    normalized.type = 'object';
+  }
+
+  if (!normalized.type && normalized.enum) {
+    normalized.type = typeof normalized.enum[0] === 'number' ? 'number' : 'string';
+  }
+
+  return normalized;
 }
 
-export function buildToolInputSchema(operation: ParsedOperation, spec: OpenAPISpec): any {
-  const properties: any = {};
-  const required: string[] = [];
-
-  // Build path parameters schema
-  if (operation.pathParams.length > 0) {
-    properties.path = buildParametersSchema(operation.pathParams);
-    
-    // Path params are always required
-    if (operation.pathParams.some(p => p.required !== false)) {
-      required.push('path');
-    }
-  }
-
-  // Build query parameters schema
-  if (operation.queryParams.length > 0) {
-    properties.query = buildParametersSchema(operation.queryParams);
-    
-    if (operation.queryParams.some(p => p.required === true)) {
-      required.push('query');
-    }
-  }
-
-  // Build header parameters schema (excluding auth headers)
-  const nonAuthHeaders = operation.headerParams.filter(
-    h => !isAuthHeader(h.name)
-  );
-  
-  if (nonAuthHeaders.length > 0) {
-    properties.headers = buildParametersSchema(nonAuthHeaders);
-    
-    if (nonAuthHeaders.some(p => p.required === true)) {
-      required.push('headers');
-    }
-  }
-
-  // Build request body schema with dereferencing
-  if (operation.hasRequestBody && operation.requestBodySchema) {
-    properties.body = dereferenceSchema(operation.requestBodySchema, spec);
-    
-    if (operation.operation.requestBody?.required === true) {
-      required.push('body');
-    }
-  }
-
-  return {
-    type: 'object',
-    properties,
-    required: required.length > 0 ? required : undefined,
-  };
-}
-
-function buildParametersSchema(params: OpenAPIParameter[]): any {
-  const properties: any = {};
+function buildParametersSchema(params: NormalizedParameter[], spec: OpenAPISpec): any {
+  const properties: Record<string, any> = {};
   const required: string[] = [];
 
   for (const param of params) {
@@ -117,11 +186,18 @@ function buildParametersSchema(params: OpenAPIParameter[]): any {
       continue;
     }
 
-    // Use the parameter's schema if available, otherwise create a basic one
-    properties[param.name] = param.schema || {
-      type: 'string',
-      description: param.description,
-    };
+    const schema = normalizeSchema(param.schema, spec);
+    if (param.description && !schema.description) {
+      schema.description = param.description;
+    }
+    if (param.example !== undefined && schema.example === undefined) {
+      schema.example = param.example;
+    }
+    if (param.default !== undefined && schema.default === undefined) {
+      schema.default = param.default;
+    }
+
+    properties[param.name] = schema;
 
     if (param.required === true) {
       required.push(param.name);
@@ -132,6 +208,7 @@ function buildParametersSchema(params: OpenAPIParameter[]): any {
     type: 'object',
     properties,
     required: required.length > 0 ? required : undefined,
+    additionalProperties: false,
   };
 }
 
@@ -146,20 +223,79 @@ function isAuthHeader(headerName: string): boolean {
   return authHeaders.includes(headerName.toLowerCase());
 }
 
+export function buildToolInputSchema(operation: ParsedOperation, spec: OpenAPISpec): any {
+  const properties: Record<string, any> = {};
+  const required: string[] = [];
+
+  if (operation.pathParams.length > 0) {
+    properties.path = buildParametersSchema(operation.pathParams, spec);
+    if (operation.pathParams.some(p => p.required !== false)) {
+      required.push('path');
+    }
+  }
+
+  if (operation.queryParams.length > 0) {
+    properties.query = buildParametersSchema(operation.queryParams, spec);
+    if (operation.queryParams.some(p => p.required === true)) {
+      required.push('query');
+    }
+  }
+
+  const nonAuthHeaders = operation.headerParams.filter(h => !isAuthHeader(h.name));
+  if (nonAuthHeaders.length > 0) {
+    properties.headers = buildParametersSchema(nonAuthHeaders, spec);
+    if (nonAuthHeaders.some(p => p.required === true)) {
+      required.push('headers');
+    }
+  }
+
+  if (operation.hasRequestBody && operation.requestBodySchema) {
+    properties.body = normalizeSchema(operation.requestBodySchema, spec);
+    if (operation.requestBodyRequired) {
+      required.push('body');
+    }
+  }
+
+  return {
+    type: 'object',
+    properties,
+    required: required.length > 0 ? required : undefined,
+    additionalProperties: false,
+  };
+}
+
 export function buildToolDescription(operation: ParsedOperation): string {
-  // Prefer summary, fallback to description, then generate from method and path
-  if (operation.operation.summary) {
-    return operation.operation.summary;
+  const baseDescription =
+    operation.operation.summary ||
+    operation.operation.description ||
+    `${operation.method.toUpperCase()} ${operation.path}`;
+
+  const hints: string[] = [];
+
+  if (operation.queryParams.length > 0) {
+    hints.push(`query params: ${operation.queryParams.map(param => param.name).join(', ')}`);
   }
 
-  if (operation.operation.description) {
-    // Truncate long descriptions
-    const desc = operation.operation.description;
-    return desc.length > 200 ? desc.substring(0, 197) + '...' : desc;
+  if (operation.hasRequestBody && operation.preferredRequestContentType) {
+    hints.push(`body: ${operation.preferredRequestContentType}`);
   }
 
-  // Generate default description
-  return `${operation.method.toUpperCase()} ${operation.path}`;
+  if (operation.preferredResponse?.statusCode) {
+    hints.push(`success: ${operation.preferredResponse.statusCode}`);
+  }
+
+  const suffix = hints.length > 0 ? ` (${hints.join(' | ')})` : '';
+  const description = `${baseDescription}${suffix}`;
+
+  return description.length > 300 ? `${description.substring(0, 297)}...` : description;
+}
+
+export function buildToolOutputSchema(operation: ParsedOperation, spec: OpenAPISpec): any | undefined {
+  if (!operation.preferredResponse?.schema) {
+    return undefined;
+  }
+
+  return normalizeSchema(operation.preferredResponse.schema, spec);
 }
 
 // Made with Bob

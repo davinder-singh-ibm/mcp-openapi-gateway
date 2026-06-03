@@ -3,7 +3,7 @@
  * Creates deterministic, collision-safe tool names from OpenAPI operations
  */
 
-import { ParsedOperation } from '../openapi/openapiParser.js';
+import { ParsedOperation } from '../config/types.js';
 
 export function buildToolName(
   operation: ParsedOperation,
@@ -24,7 +24,7 @@ export function buildToolName(
   parts.push(operation.method);
 
   // Normalize path
-  const normalizedPath = normalizePath(operation.path, operation.pathParams.map(p => p.name));
+  const normalizedPath = normalizePath(operation.path, operation.pathParams.map((p: { name: string }) => p.name));
   parts.push(normalizedPath);
 
   // Join with underscore and convert to lowercase
